@@ -1,0 +1,8 @@
+{
+  "name": "Expense Tracker Pro",
+  "description": "Comprehensive personal finance and expense tracking tool to monitor daily, weekly, monthly, and yearly spending patterns.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

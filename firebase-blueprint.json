@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Minimal account identity metadata for authenticated Sanchoy user",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 256 },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["uid"]
+    },
+    "EncryptedWorkspace": {
+      "title": "EncryptedWorkspace",
+      "description": "Private client-side encrypted financial workspace. All balances, transactions, allowances, and notes are AES-GCM encrypted ciphertext.",
+      "type": "object",
+      "properties": {
+        "cryptoVersion": { "type": "number" },
+        "schemaVersion": { "type": "number" },
+        "passcodeWrappedKey": { "type": "string", "maxLength": 2048 },
+        "passcodeSalt": { "type": "string", "maxLength": 256 },
+        "passcodeWrapIv": { "type": "string", "maxLength": 256 },
+        "recoveryWrappedKey": { "type": "string", "maxLength": 2048 },
+        "recoverySalt": { "type": "string", "maxLength": 256 },
+        "recoveryWrapIv": { "type": "string", "maxLength": 256 },
+        "encryptedData": { "type": "string", "maxLength": 1048576 },
+        "encryptedDataIv": { "type": "string", "maxLength": 256 },
+        "clientRevision": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["cryptoVersion", "passcodeWrappedKey", "encryptedData"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Minimal non-sensitive profile record owned by the authenticated user"
+    },
+    "/users/{userId}/private/{workspaceId}": {
+      "schema": "EncryptedWorkspace",
+      "description": "Encrypted financial workspace payload and wrapped keys owned exclusively by userId"
+    }
+  }
+}

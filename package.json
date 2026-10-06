@@ -1,0 +1,17 @@
+{
+  "name": "expense-tracker",
+  "version": "1.0.0",
+  "description": "Comprehensive expense tracking tool to monitor daily, weekly, monthly, and yearly spending patterns.",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "test": "node --test tests/financial-engine.test.js tests/transaction-system.test.js tests/phase4-security.test.js tests/phase4-1-hardening.test.js tests/phase5-sync.test.js tests/phase6a-sync-center.test.js tests/phase6b-conflict-resolution.test.js tests/phase7-audit.test.js tests/phase8a-pre-release.test.js tests/phase9a-vault-core.test.js tests/phase9b-vault-ui.test.js tests/phase9c-vault-sync.test.js tests/phase9d-vault-conflict.test.js tests/phase10b-intelligence.test.js tests/phase10c-charts.test.js",
+    "build": "echo 'No build step required'",
+    "lint": "echo 'No lint step required'",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "firebase": "10.13.0"
+  }
+}

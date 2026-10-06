@@ -1,0 +1,154 @@
+/**
+ * SANCHOY DESIGN TOKENS
+ * Personal Financial Intelligence & Virtual Financial OS
+ * Supports Light ("Premium FinTech") & Dark ("Futuristic Financial OS")
+ */
+
+:root {
+  /* Fonts */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, Cambria, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Typography Scale */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
+  --text-display: 3rem;  /* 48px */
+
+  /* Spacing Scale */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-10: 2.5rem;  /* 40px */
+  --space-12: 3rem;    /* 48px */
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-pill: 9999px;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 320ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* LIGHT THEME (Default): "Premium FinTech" */
+  --background: #f8f7f4;
+  --surface: #ffffff;
+  --surface-raised: #f2f0ea;
+  --surface-inset: #ebe7de;
+  --surface-overlay: rgba(248, 247, 244, 0.88);
+  
+  --border: rgba(23, 32, 29, 0.10);
+  --border-subtle: rgba(23, 32, 29, 0.05);
+  --border-focus: rgba(45, 106, 87, 0.5);
+
+  --text-primary: #151e1b;
+  --text-secondary: #485450;
+  --text-muted: #798682;
+
+  --accent: #2d6a57;               /* Muted eucalyptus */
+  --accent-hover: #225243;
+  --accent-subtle: rgba(45, 106, 87, 0.08);
+  --accent-contrast: #ffffff;
+
+  --accent-secondary: #a8623d;     /* Restrained copper / terracotta */
+  --accent-secondary-subtle: rgba(168, 98, 61, 0.08);
+
+  --income: #1b8755;               /* Financial Semantic Green */
+  --income-bg: rgba(27, 135, 85, 0.08);
+  --income-border: rgba(27, 135, 85, 0.2);
+
+  --expense: #c93b3b;              /* Financial Semantic Red */
+  --expense-bg: rgba(201, 59, 59, 0.08);
+  --expense-border: rgba(201, 59, 59, 0.2);
+
+  --warning: #b47820;
+  --warning-bg: rgba(180, 120, 32, 0.08);
+
+  --danger: #c93b3b;
+  --danger-hover: #b03030;
+
+  --shadow: 0 1px 3px rgba(23, 32, 29, 0.05), 0 1px 2px rgba(23, 32, 29, 0.03);
+  --shadow-raised: 0 8px 24px -4px rgba(23, 32, 29, 0.08), 0 2px 6px -1px rgba(23, 32, 29, 0.04);
+  --shadow-modal: 0 20px 48px -8px rgba(23, 32, 29, 0.16);
+
+  /* Old variable compatibility mappings */
+  --bg-neu: var(--background);
+  --shadow-dark: rgba(23, 32, 29, 0.08);
+  --shadow-light: #ffffff;
+  --primary: var(--accent);
+  --muted: var(--text-muted);
+}
+
+/* DARK THEME: "Futuristic Financial OS" */
+html.dark, [data-theme="dark"] {
+  --background: #0b0f0e;           /* Deep ink / green-black foundation */
+  --surface: #121816;              /* Charcoal mineral surface */
+  --surface-raised: #18221f;       /* Raised mineral surface */
+  --surface-inset: #0e1412;        /* Inset mineral bed */
+  --surface-overlay: rgba(11, 15, 14, 0.88);
+
+  --border: rgba(243, 241, 236, 0.10);
+  --border-subtle: rgba(243, 241, 236, 0.05);
+  --border-focus: rgba(94, 168, 145, 0.6);
+
+  --text-primary: #f3f1ec;         /* Warm ivory typography */
+  --text-secondary: #b1bdb9;
+  --text-muted: #75837e;
+
+  --accent: #5ea891;               /* Muted sage / eucalyptus */
+  --accent-hover: #73bca5;
+  --accent-subtle: rgba(94, 168, 145, 0.14);
+  --accent-contrast: #0b0f0e;
+
+  --accent-secondary: #c48b59;     /* Oxidized copper */
+  --accent-secondary-subtle: rgba(196, 139, 89, 0.14);
+
+  --income: #34d399;               /* Semantic Emerald Green */
+  --income-bg: rgba(52, 211, 153, 0.12);
+  --income-border: rgba(52, 211, 153, 0.25);
+
+  --expense: #f87171;              /* Semantic Rose Red */
+  --expense-bg: rgba(248, 113, 113, 0.12);
+  --expense-border: rgba(248, 113, 113, 0.25);
+
+  --warning: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.12);
+
+  --danger: #f87171;
+  --danger-hover: #ef4444;
+
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-raised: 0 12px 30px -4px rgba(0, 0, 0, 0.65), 0 4px 10px -2px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 24px 60px -8px rgba(0, 0, 0, 0.85);
+
+  /* Old variable compatibility mappings */
+  --bg-neu: var(--background);
+  --shadow-dark: rgba(0, 0, 0, 0.6);
+  --shadow-light: rgba(255, 255, 255, 0.03);
+  --primary: var(--accent);
+  --muted: var(--text-muted);
+}
+
+/* Reduced Motion respect */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

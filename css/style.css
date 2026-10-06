@@ -1,0 +1,20 @@
+/**
+ * SANCHOY LEGACY STYLE BRIDGE
+ * Preserves scrollbar rules without overriding Sanchoy design tokens
+ */
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}

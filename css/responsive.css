@@ -1,0 +1,18 @@
+/* Sanchoy Responsive & Spacing Normalization Rules */
+
+/* Safe clearance above mobile bottom navigation bar */
+@media (max-width: 768px) {
+  #page-tracker,
+  #page-analytics,
+  #page-vault,
+  #page-sync {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Fluid wrap for compact utilities header at tablet breakpoints (640px-1024px) */
+@media (min-width: 640px) and (max-width: 1024px) {
+  .sanchoy-card {
+    overflow-x: hidden;
+  }
+}

@@ -1,0 +1,1370 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Expense Tracker Pro</title>
+  <meta name="description" content="Comprehensive personal finance and expense tracking tool to monitor daily, weekly, monthly, and yearly spending patterns.">
+  <meta property="og:title" content="Expense Tracker Pro">
+  <meta property="og:description" content="Comprehensive personal finance and expense tracking tool to monitor daily, weekly, monthly, and yearly spending patterns.">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0f0e">
+
+  <!-- Safe Global JSON.stringify Circular Reference Guard -->
+  <script>
+    (function() {
+      const originalStringify = JSON.stringify;
+      JSON.stringify = function(value, replacer, space) {
+        try {
+          return originalStringify(value, replacer, space);
+        } catch (err) {
+          if (err instanceof TypeError && err.message && err.message.includes('circular')) {
+            const seen = new WeakSet();
+            return originalStringify(value, function(key, val) {
+              if (typeof val === 'object' && val !== null) {
+                if (seen.has(val)) {
+                  return undefined;
+                }
+                seen.add(val);
+              }
+              if (typeof replacer === 'function') {
+                return replacer.call(this, key, val);
+              }
+              return val;
+            }, space);
+          }
+          throw err;
+        }
+      };
+    })();
+  </script>
+
+  <!-- ES Module Import Map for Browser Modules (Firebase Web SDK) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "firebase/app": "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js",
+      "firebase/auth": "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js",
+      "firebase/firestore": "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js"
+    }
+  }
+  </script>
+
+  <!-- Chart.js and Tailwind CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,600&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+            serif: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          boxShadow: {
+            'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.04)',
+            'glass-lg': '0 12px 40px 0 rgba(31, 38, 135, 0.08)',
+          },
+        },
+      },
+    }
+  </script>
+
+  <link rel="stylesheet" href="css/design-tokens.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/modal.css">
+  <link rel="stylesheet" href="css/animation.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body class="font-sans antialiased text-[var(--text-primary)] bg-[var(--background)] min-h-screen relative overflow-x-hidden transition-colors duration-200">
+
+  <!-- SANCHOY GLOBAL DESKTOP APPLICATION HEADER -->
+  <header class="sanchoy-header px-4 sm:px-8 py-3 flex items-center justify-between" role="banner">
+    <!-- Brand Identity -->
+    <div class="flex items-center gap-3">
+      <button data-nav-target="home" class="flex items-center gap-2.5 cursor-pointer bg-transparent border-0 p-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-lg">
+        <div class="w-8 h-8 rounded-lg bg-[var(--accent)] text-[var(--accent-contrast)] flex items-center justify-center font-serif text-lg font-bold shadow-sm">
+          S
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-serif-editorial text-lg sm:text-xl font-bold tracking-tight text-[var(--text-primary)] leading-none">SANCHOY</span>
+            <span class="text-[9px] uppercase font-mono tracking-widest px-1.5 py-0.5 rounded sanchoy-surface-inset text-[var(--accent)] font-bold">OS</span>
+          </div>
+          <span class="text-[10px] text-[var(--text-muted)] block tracking-normal">Financial Intelligence</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Desktop Center Navigation Bar -->
+    <nav id="desktopNavContainer" class="hidden md:flex items-center gap-1 p-1 sanchoy-surface-inset rounded-xl" aria-label="Main Navigation">
+      <button data-nav-target="home" class="sanchoy-nav-link active">
+        <span>Home</span>
+      </button>
+      <button data-nav-target="charts" class="sanchoy-nav-link">
+        <span>Charts</span>
+      </button>
+      <button data-nav-target="vault" class="sanchoy-nav-link">
+        <span>Vault</span>
+      </button>
+      <button data-nav-target="settings" class="sanchoy-nav-link">
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <!-- Header Action Controls -->
+    <div class="flex items-center gap-2 sm:gap-2.5">
+      <!-- Privacy Toggle -->
+      <button id="togglePrivacyBtn" class="sanchoy-btn-icon" title="Toggle Balance Privacy" aria-label="Toggle Privacy Mode">
+        <span id="privacyIcon" class="flex items-center justify-center"></span>
+      </button>
+      
+      <!-- Theme Switcher -->
+      <button data-action="toggle-theme" class="sanchoy-btn-icon" title="Toggle Light/Dark Theme" aria-label="Toggle Visual Atmosphere">
+        <span data-theme-toggle-icon class="flex items-center justify-center"></span>
+      </button>
+
+      <!-- Profile Control -->
+      <button id="profileBtn" class="sanchoy-btn-icon relative" title="User Profile & Quick Settings" aria-label="User Profile & Settings" aria-haspopup="true">
+        <div class="w-6 h-6 rounded-lg bg-[var(--surface-inset)] border border-[var(--border-subtle)] text-[var(--text-primary)] flex items-center justify-center font-serif text-xs font-bold leading-none select-none">
+          S
+        </div>
+      </button>
+    </div>
+  </header>
+
+  <!-- BACKGROUND DECORATIONS -->
+  <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none opacity-40">
+    <div class="orb absolute -top-[10%] -left-[10%] w-[50%] h-[50%] rounded-full bg-[var(--accent)]/10 blur-[130px]"></div>
+    <div class="orb-delayed absolute top-[40%] -right-[15%] w-[60%] h-[60%] rounded-full bg-[var(--accent-secondary)]/8 blur-[150px]"></div>
+  </div>
+
+  <!-- ===== LANDING PAGE ===== -->
+  <main id="page-landing" class="page visible min-h-screen flex items-center justify-center py-12 px-4 sm:px-6">
+    <div class="max-w-4xl w-full space-y-12">
+      
+      <!-- HERO CONTENT AND HEADER -->
+      <div class="text-center space-y-6 max-w-3xl mx-auto">
+        <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full sanchoy-surface-inset text-xs font-bold text-[var(--accent)] font-mono">
+          SANCHOY · PERSONAL FINANCIAL INTELLIGENCE
+        </span>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[var(--text-primary)] font-serif-editorial leading-[1.15]">
+          A Sophisticated <br class="hidden sm:inline"/>
+          Virtual <span class="text-[var(--accent)]">Financial OS</span>
+        </h1>
+        <p class="text-sm sm:text-base text-[var(--text-secondary)] max-w-2xl mx-auto leading-relaxed">
+          Take command of your virtual liquidity. Seamlessly balance dual-ledger accounts, monitor additive daily allocations, and uncover deep spending patterns with calm confidence.
+        </p>
+        <div class="pt-2 flex items-center justify-center">
+          <button id="toTrackerBtn" class="flex items-center gap-2.5 px-8 py-3.5 sanchoy-btn sanchoy-btn-primary text-sm font-bold shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            Enter Financial Command
+          </button>
+        </div>
+      </div>
+
+      <!-- FEATURES HIGHLIGHTS SECTION -->
+      <div class="space-y-6 pt-4">
+        <div class="text-center space-y-1">
+          <span class="text-[11px] font-bold text-[var(--accent)] uppercase tracking-widest font-mono">Core System Architecture</span>
+          <h2 class="text-xl sm:text-2xl font-bold text-[var(--text-primary)] font-serif-editorial">Deterministic Financial Mechanics</h2>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="sanchoy-card p-6 flex flex-col justify-between text-left transition-all duration-300 hover:translate-y-[-2px]">
+            <div class="space-y-4">
+              <div class="p-3 w-fit sanchoy-surface-inset text-[var(--accent)] rounded-xl">
+                <svg class="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M3 9.75h18M7.5 15h3"/></svg>
+              </div>
+              <div class="space-y-1.5">
+                <h3 class="font-bold text-[var(--text-primary)] text-sm font-serif-editorial">Dual Virtual Wallets</h3>
+                <p class="text-xs text-[var(--text-muted)] leading-relaxed">
+                  Manage physical Cash and digital Online virtual balances side-by-side with automatic additive daily allocation and carry-forward.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="sanchoy-card p-6 flex flex-col justify-between text-left transition-all duration-300 hover:translate-y-[-2px]">
+            <div class="space-y-4">
+              <div class="p-3 w-fit sanchoy-surface-inset text-[var(--accent)] rounded-xl">
+                <svg class="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20.25h18M4.5 16.5l5.25-5.25 4.5 4.5 6-7.5M15.75 8.25h4.5v4.5"/></svg>
+              </div>
+              <div class="space-y-1.5">
+                <h3 class="font-bold text-[var(--text-primary)] text-sm font-serif-editorial">Cadence & Heatmaps</h3>
+                <p class="text-xs text-[var(--text-muted)] leading-relaxed">
+                  Visual distribution charts, interval timelines, and density heatmaps reveal spending rhythm without generic AI dashboard clutter.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="sanchoy-card p-6 flex flex-col justify-between text-left transition-all duration-300 hover:translate-y-[-2px]">
+            <div class="space-y-4">
+              <div class="p-3 w-fit sanchoy-surface-inset text-[var(--accent)] rounded-xl">
+                <svg class="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.25"/><path d="M7.5 10.5V6.75a4.5 4.5 0 1 1 9 0v3.75"/></svg>
+              </div>
+              <div class="space-y-1.5">
+                <h3 class="font-bold text-[var(--text-primary)] text-sm font-serif-editorial">Sandbox Sovereignty</h3>
+                <p class="text-xs text-[var(--text-muted)] leading-relaxed">
+                  100% browser sandbox isolation via IndexedDB. Export standard JSON backups, CSV sheets, and lock with master passcodes.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOTER -->
+      <footer class="text-[11px] text-[var(--text-muted)] pt-8 border-t border-[var(--border-subtle)] text-center flex flex-col sm:flex-row items-center justify-between gap-4">
+        <span class="flex items-center gap-1.5 justify-center sm:justify-start">
+          <svg class="w-3.5 h-3.5 text-[var(--accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.25"/><path d="M7.5 10.5V6.75a4.5 4.5 0 1 1 9 0v3.75"/></svg>
+          Active Session: Locally secured inside browser sandbox (IndexedDB) — zero telemetry.
+        </span>
+        <span class="font-semibold text-[var(--accent)] font-mono">SANCHOY OS v3.0</span>
+      </footer>
+    </div>
+  </main>
+
+  <!-- ===== TRACKER / DASHBOARD (HOME) PAGE ===== -->
+  <section id="page-tracker" class="page max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pb-24 md:pb-12">
+    <!-- Header & Quick Actions -->
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 sm:mb-8 pb-4 border-b border-[var(--border-subtle)]">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] font-bold tracking-widest uppercase text-[var(--accent)] font-mono">Dual-Ledger OS</span>
+          <span class="text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded sanchoy-surface-inset text-[var(--accent)] font-mono">Deterministic Engine</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold font-serif-editorial tracking-tight text-[var(--text-primary)] mt-0.5">Financial Command</h1>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">Virtual allocations, liquid wallet balances & deterministic financial intelligence</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="hideEverythingBtn" class="sanchoy-btn sanchoy-btn-danger text-xs py-2 px-3" title="Lock and Hide Everything">
+          <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.25"/><path d="M7.5 10.5V6.75a4.5 4.5 0 1 1 9 0v3.75"/></svg>
+            <span>Hide All</span>
+          </span>
+        </button>
+        <button id="backToLanding" class="sanchoy-btn sanchoy-btn-secondary text-xs py-2 px-3">
+          Landing
+        </button>
+      </div>
+    </div>
+
+    <div class="space-y-8">
+
+      <!-- ============================================== -->
+      <!-- 1. ACCOUNT BALANCES (HERO & WALLETS)           -->
+      <!-- ============================================== -->
+      <div class="sanchoy-card p-5 sm:p-7 space-y-6">
+        <!-- Configuration & Actions Row -->
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-[var(--border-subtle)]">
+          <div>
+            <span class="text-[10px] font-bold tracking-wider uppercase text-[var(--accent)] font-mono block">Virtual Capital Position</span>
+            <h2 class="text-base sm:text-lg font-bold font-serif-editorial text-[var(--text-primary)]">Virtual Wallets & Allocations</h2>
+          </div>
+          <!-- Compact, consistent utility group -->
+          <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <button id="allowanceBtn" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1.5" title="Configure Monthly Virtual Allowance">
+              <svg class="w-3.5 h-3.5 text-[var(--accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Allowance</span>
+            </button>
+            <button id="editBalanceBtn" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1.5" title="Set Starting Virtual Baseline">
+              <svg class="w-3.5 h-3.5 text-[var(--accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 7.5h15v12a1.5 1.5 0 0 1-1.5 1.5H6a1.5 1.5 0 0 1-1.5-1.5v-12zM9 7.5V5.25a1.5 1.5 0 0 1 1.5-1.5h3a1.5 1.5 0 0 1 1.5 1.5V7.5M4.5 12h15"/></svg>
+              <span>Starting Balance</span>
+            </button>
+            <button id="securitySettingsBtn" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-2 flex items-center gap-1.5" title="Manage Security Settings">
+              <svg class="w-3.5 h-3.5 text-[var(--accent-secondary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.25 9.75a4.5 4.5 0 1 0-6.19 6.19L3.75 20.25v2.25h2.25v-1.5h1.5v-1.5h1.5l2.06-2.06a4.5 4.5 0 0 0 3.19-7.69z"/><circle cx="15.75" cy="8.25" r="1.125"/></svg>
+              <span>Security</span>
+            </button>
+            <button id="exportBtn" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-2 flex items-center gap-1.5" title="Save Backup">
+              <svg class="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.75 15.75v3a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-3M12 3.75v11.25M7.5 10.5l4.5 4.5 4.5-4.5"/></svg>
+              <span>Backup</span>
+            </button>
+            <button id="importBtn" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-2 flex items-center gap-1.5" title="Import Data">
+              <svg class="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.75 15.75v3a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-3M12 15V3.75M7.5 8.25L12 3.75l4.5 4.5"/></svg>
+              <span>Import</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Wallet Hierarchy Presentation (Single-Elevation, Hairline Separated) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Online Wallet -->
+          <div class="sanchoy-surface-inset p-4 sm:p-5 rounded-xl border border-[var(--border-subtle)] flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-[var(--accent)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M3 9.75h18M7.5 15h3"/></svg>
+                  <span class="text-xs font-bold uppercase tracking-wider text-[var(--accent)] font-mono">Online Wallet</span>
+                </div>
+                <span id="onlineRateBadge" class="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent-subtle)] px-2 py-0.5 rounded-md hidden"></span>
+              </div>
+              <div id="onlineAmt" class="sanchoy-balance-wallet mt-2.5">₹0.00</div>
+              <div id="onlineRecoveryNotice" class="text-xs font-bold text-[var(--expense)] mt-1 min-h-[16px]"></div>
+            </div>
+            <p class="text-[10px] text-[var(--text-muted)] mt-2.5 pt-2 border-t border-[var(--border-subtle)]">
+              Automatic daily allocation · Independent digital ledger
+            </p>
+          </div>
+
+          <!-- Cash Wallet -->
+          <div class="sanchoy-surface-inset p-4 sm:p-5 rounded-xl border border-[var(--border-subtle)] flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-[var(--accent-secondary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5.25" width="18" height="13.5" rx="2.25"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9h.01M18 15h.01"/></svg>
+                  <span class="text-xs font-bold uppercase tracking-wider text-[var(--accent-secondary)] font-mono">Cash Wallet</span>
+                </div>
+                <span id="cashRateBadge" class="text-[10px] font-bold text-[var(--accent-secondary)] bg-[var(--accent-secondary-subtle)] px-2 py-0.5 rounded-md hidden"></span>
+              </div>
+              <div id="cashAmt" class="sanchoy-balance-wallet mt-2.5">₹0.00</div>
+              <div id="cashRecoveryNotice" class="text-xs font-bold text-[var(--expense)] mt-1 min-h-[16px]"></div>
+            </div>
+            <p class="text-[10px] text-[var(--text-muted)] mt-2.5 pt-2 border-t border-[var(--border-subtle)]">
+              Automatic daily allocation · Independent physical cash ledger
+            </p>
+          </div>
+        </div>
+
+        <!-- Total Liquid Virtual Balance (Harmonized, Clean Elevation) -->
+        <div class="p-4 sm:p-5 rounded-xl border border-[var(--border)] sanchoy-surface-raised">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+            <div>
+              <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] font-mono">Total Liquid Virtual Balance</span>
+              <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Authoritative combined liquid virtual position across wallets</p>
+            </div>
+            <span id="allowanceTotalBadge" class="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent-subtle)] px-2 py-0.5 rounded-md self-start sm:self-auto hidden"></span>
+          </div>
+          <div id="totalAmt" class="sanchoy-balance-total mt-2">₹0.00</div>
+          <div id="totalStatusNotice" class="text-xs font-semibold text-[var(--text-muted)] mt-1 min-h-[16px]">Liquid Virtual Total</div>
+        </div>
+
+        <!-- Dynamic Deficit Recovery Banner -->
+        <div id="deficitRecoveryBanner" class="hidden"></div>
+      </div>
+
+      <!-- Restrained Primary Action Strip (Clean Hierarchy, Not Overpowering Balances) -->
+      <div class="p-3 sm:p-4 rounded-xl border border-[var(--border-subtle)] sanchoy-surface-inset flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 w-full sm:w-auto">
+          <button id="openNewTxModalBtn" class="w-8 h-8 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-contrast)] flex items-center justify-center text-lg font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0" title="Log New Transaction" aria-label="Log New Transaction">
+            +
+          </button>
+          <div>
+            <span class="font-bold text-[var(--text-primary)] text-xs block">Log Transaction</span>
+            <span class="text-[10px] text-[var(--text-muted)]">Record expense or income to Online or Cash ledger</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <button id="quickAddExpenseBtn" class="flex-1 sm:flex-initial py-1.5 px-3 rounded-lg font-bold text-xs bg-[var(--expense-bg)] text-[var(--expense)] border border-[var(--expense-border)] hover:opacity-90 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.25 5.25l13.5 13.5M18.75 9.75v9h-9"/></svg>
+            <span>Expense</span>
+          </button>
+          <button id="quickAddIncomeBtn" class="flex-1 sm:flex-initial py-1.5 px-3 rounded-lg font-bold text-xs bg-[var(--income-bg)] text-[var(--income)] border border-[var(--income-border)] hover:opacity-90 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.75 18.75L5.25 5.25M5.25 14.25v-9h9"/></svg>
+            <span>Income</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- 2. COMPARISON SECTION                          -->
+      <!-- ============================================== -->
+      <div class="sanchoy-card p-5 sm:p-6 space-y-5">
+        <div class="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
+          <div>
+            <span class="sanchoy-section-tag">Comparative Intelligence</span>
+            <h2 class="sanchoy-section-title text-lg sm:text-xl">Financial Flow & Period Comparison</h2>
+          </div>
+          <span class="text-[11px] text-[var(--text-muted)] font-mono">Deterministic State</span>
+        </div>
+
+        <!-- Period Comparison Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="sanchoy-surface-inset p-4 rounded-xl">
+            <span class="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Vs Last Month</span>
+            <div id="compareLastMonth" class="text-xl sm:text-2xl font-bold font-mono my-1 text-[var(--text-primary)]">—</div>
+            <p id="compareLastMonthText" class="text-[10px] text-[var(--text-muted)]">Not enough data</p>
+          </div>
+          <div class="sanchoy-surface-inset p-4 rounded-xl">
+            <span class="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Vs 3-Month Average</span>
+            <div id="compareAvg" class="text-xl sm:text-2xl font-bold font-mono my-1 text-[var(--text-primary)]">—</div>
+            <p id="compareAvgText" class="text-[10px] text-[var(--text-muted)]">Not enough history</p>
+          </div>
+          <div class="sanchoy-surface-inset p-4 rounded-xl">
+            <span class="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Total Expenses</span>
+            <span id="monthExpenses" class="text-xl sm:text-2xl font-bold font-mono my-1 block text-[var(--expense)]">₹0.00</span>
+            <span class="text-[10px] text-[var(--text-muted)]">Current billing period</span>
+          </div>
+          <div class="sanchoy-surface-inset p-4 rounded-xl">
+            <span class="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Total Income</span>
+            <span id="monthIncome" class="text-xl sm:text-2xl font-bold font-mono my-1 block text-[var(--income)]">₹0.00</span>
+            <span class="text-[10px] text-[var(--text-muted)]">Manual & incoming streams</span>
+          </div>
+        </div>
+
+        <!-- Cash Activity vs Online Activity & Net Savings Flow -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          <!-- Savings Rate Bar -->
+          <div class="sanchoy-surface-raised p-4 rounded-xl space-y-2 border border-[var(--border-subtle)]">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-[var(--text-secondary)]">Savings Rate</span>
+              <span id="savingsPct" class="font-extrabold font-mono text-[var(--text-primary)]">0.0%</span>
+            </div>
+            <div class="w-full h-2 rounded-full overflow-hidden sanchoy-surface-inset">
+              <div id="savingsBar" class="bg-[var(--accent)] h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <div class="flex justify-between items-center text-[11px] pt-1">
+              <span class="text-[var(--text-muted)]">Net Savings Flow</span>
+              <span id="netIncome" class="font-bold font-mono text-[var(--text-primary)]">₹0.00</span>
+            </div>
+          </div>
+
+          <!-- Cash Activity -->
+          <div class="sanchoy-surface-raised p-4 rounded-xl flex items-center justify-between border border-[var(--border-subtle)]">
+            <div>
+              <span class="text-[10px] uppercase font-bold text-[var(--accent-secondary)]">Cash Activity</span>
+              <p class="text-[10px] text-[var(--text-muted)]">Physical transactions flow</p>
+            </div>
+            <span id="pmCash" class="font-bold font-mono text-base text-[var(--text-primary)]">₹0.00</span>
+          </div>
+
+          <!-- Online Activity -->
+          <div class="sanchoy-surface-raised p-4 rounded-xl flex items-center justify-between border border-[var(--border-subtle)]">
+            <div>
+              <span class="text-[10px] uppercase font-bold text-[var(--accent)]">Online Activity</span>
+              <p class="text-[10px] text-[var(--text-muted)]">Digital & card transactions</p>
+            </div>
+            <span id="pmOnline" class="font-bold font-mono text-base text-[var(--text-primary)]">₹0.00</span>
+          </div>
+        </div>
+
+        <!-- Monthly Trends Indicators -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          <div class="sanchoy-surface-inset p-3.5 rounded-xl space-y-1">
+            <span class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Monthly Trends</span>
+            <div id="trendIndicators" class="text-xs text-[var(--text-secondary)] font-semibold leading-relaxed"></div>
+          </div>
+          <div class="sanchoy-surface-inset p-3.5 rounded-xl space-y-1">
+            <span class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Zero-Spend Days Summary</span>
+            <div id="zeroSpendInfo" class="text-xs text-[var(--text-secondary)] font-semibold leading-relaxed"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- 3. SPENDING TIMELINE & PATTERNS                -->
+      <!-- ============================================== -->
+      <div class="sanchoy-card p-5 sm:p-6 space-y-5">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-[var(--border-subtle)]">
+          <div>
+            <span class="sanchoy-section-tag">Cadence & Distribution</span>
+            <h2 class="sanchoy-section-title text-lg sm:text-xl">Spending Timeline</h2>
+          </div>
+          <!-- Interval Range Tabs -->
+          <div class="flex items-center gap-1 p-1 sanchoy-surface-inset rounded-xl" id="rangeTabs">
+            <button data-range="daily" class="tab active px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--text-primary)] bg-[var(--surface)] shadow-sm transition-all">Daily</button>
+            <button data-range="weekly" class="tab px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">Weekly</button>
+            <button data-range="monthly" class="tab px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">Monthly</button>
+            <button data-range="yearly" class="tab px-3 py-1.5 rounded-lg text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">Yearly</button>
+          </div>
+        </div>
+
+        <!-- Timeline Items Container -->
+        <div id="overview" class="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+          <div id="overviewContent" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- 4. FINANCIAL HEALTH SCORE                      -->
+      <!-- 5. LOGGING STREAK & REWARDS                    -->
+      <!-- 6. ZERO-SPEND QUALITY                          -->
+      <!-- ============================================== -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- 4. Financial Health Score -->
+        <div class="sanchoy-card p-5 space-y-4 relative overflow-hidden flex flex-col justify-between">
+          <div>
+            <span class="sanchoy-section-tag">Algorithmic Score</span>
+            <h3 class="font-bold text-[var(--text-primary)] font-serif-editorial text-base mt-0.5">Financial Health</h3>
+            
+            <div class="flex items-baseline gap-2 mt-3">
+              <span id="healthScore" class="text-4xl sm:text-5xl font-extrabold font-mono leading-none text-[var(--text-primary)]">0</span>
+              <span id="healthLabel" class="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">—</span>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="w-full bg-[var(--surface-inset)] h-2 rounded-full overflow-hidden">
+              <div id="healthBar" class="h-full rounded-full transition-all duration-500 bg-[var(--accent)]" style="width: 0%"></div>
+            </div>
+            <p id="healthBreakdown" class="text-[10px] text-[var(--text-muted)] font-mono uppercase tracking-wide"></p>
+          </div>
+        </div>
+
+        <!-- 5. Logging Streak & Rewards -->
+        <div class="sanchoy-card p-5 space-y-4 flex flex-col justify-between">
+          <div>
+            <span class="sanchoy-section-tag">Engagement & Discipline</span>
+            <h3 class="font-bold text-[var(--text-primary)] font-serif-editorial text-base mt-0.5">Logging Streaks & Rewards</h3>
+            
+            <div class="grid grid-cols-2 gap-3 mt-3">
+              <div class="sanchoy-surface-inset p-3 rounded-xl">
+                <span class="text-[10px] font-semibold text-[var(--text-muted)] uppercase">Zero-Spend</span>
+                <div id="zeroSpendStreak" class="text-base font-extrabold font-mono text-[var(--text-primary)] mt-1">0 days</div>
+              </div>
+              <div class="sanchoy-surface-inset p-3 rounded-xl">
+                <span class="text-[10px] font-semibold text-[var(--text-muted)] uppercase">Active Logging</span>
+                <div id="logStreak" class="text-base font-extrabold font-mono text-[var(--text-primary)] mt-1">0 days</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="streakBadges" class="text-xs font-bold text-[var(--accent)] sanchoy-surface-inset p-2.5 rounded-xl border border-[var(--border-subtle)] text-center"></div>
+        </div>
+
+        <!-- 6. Zero-Spend Quality -->
+        <div class="sanchoy-card p-5 space-y-4 flex flex-col justify-between">
+          <div>
+            <span class="sanchoy-section-tag">Discipline Metric</span>
+            <div class="flex justify-between items-center mt-0.5">
+              <h3 class="font-bold text-[var(--text-primary)] font-serif-editorial text-base">Zero-Spend Quality</h3>
+              <span id="zeroSpendQualityPct" class="font-extrabold font-mono text-[var(--text-primary)] text-sm">0%</span>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="w-full h-2 rounded-full overflow-hidden sanchoy-surface-inset">
+              <div id="zeroSpendQualityBar" class="h-full rounded-full transition-all duration-300 bg-[var(--accent)]" style="width: 0%"></div>
+            </div>
+            <p id="zeroSpendQualityText" class="text-[11px] text-[var(--text-muted)] font-medium"></p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ============================================== -->
+      <!-- 7. MONTHLY ALLOWANCE ARCHITECTURE              -->
+      <!-- ============================================== -->
+      <div class="sanchoy-card p-5 sm:p-6 space-y-4">
+        <div class="flex justify-between items-center pb-3 border-b border-[var(--border-subtle)]">
+          <div>
+            <span class="sanchoy-section-tag">Engine Parameters</span>
+            <h2 class="sanchoy-section-title text-base sm:text-lg">Virtual Allowance Architecture</h2>
+            <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Automatic additive daily virtual allocations</p>
+          </div>
+          <button id="configureAllowanceQuickBtn" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-3">Configure</button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div class="sanchoy-surface-inset p-4 rounded-xl border border-[var(--border-subtle)]">
+            <span class="text-[10px] uppercase font-bold text-[var(--accent)] block">Online Monthly Allowance</span>
+            <div id="allowanceOnlineSummary" class="text-base font-extrabold font-mono text-[var(--text-primary)] mt-1">₹0.00 / month</div>
+            <span id="allowanceOnlineDailyRate" class="text-xs text-[var(--accent)] font-bold font-mono block mt-0.5">+₹0.00 / day</span>
+          </div>
+          <div class="sanchoy-surface-inset p-4 rounded-xl border border-[var(--border-subtle)]">
+            <span class="text-[10px] uppercase font-bold text-[var(--accent-secondary)] block">Cash Monthly Allowance</span>
+            <div id="allowanceCashSummary" class="text-base font-extrabold font-mono text-[var(--text-primary)] mt-1">₹0.00 / month</div>
+            <span id="allowanceCashDailyRate" class="text-xs text-[var(--accent-secondary)] font-bold font-mono block mt-0.5">+₹0.00 / day</span>
+          </div>
+        </div>
+
+        <p class="text-[11px] text-[var(--text-muted)] leading-relaxed flex items-start gap-1.5">
+          <svg class="w-3.5 h-3.5 text-[var(--accent)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6c0 2.25 1.5 4.5 2.25 6h7.5c.75-1.5 2.25-3.75 2.25-6a6 6 0 0 0-6-6zM9.75 18h4.5M10.5 21h3"/></svg>
+          <span>Sanchoy virtual allocations are additive and carry forward indefinitely. Unused allocations never expire at midnight. Negative balances automatically recover via ongoing daily allocations.</span>
+        </p>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- 8. SMART INSIGHTS & DYNAMIC BUDGET             -->
+      <!-- ============================================== -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Smart Insights List -->
+        <div class="lg:col-span-6 sanchoy-card p-5 space-y-4">
+          <div class="pb-3 border-b border-[var(--border-subtle)]">
+            <span class="sanchoy-section-tag">Observation</span>
+            <h3 class="sanchoy-section-title text-base">Smart Insights</h3>
+          </div>
+          <ul id="smartInsights" class="space-y-2 text-xs text-[var(--text-secondary)] list-disc list-inside">
+            <li>Analyzing logs...</li>
+          </ul>
+
+          <div class="pt-3 border-t border-[var(--border-subtle)] space-y-2">
+            <span class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide block">Top Spending Categories</span>
+            <div id="topCats" class="space-y-2 text-xs"></div>
+          </div>
+        </div>
+
+        <!-- Dynamic Monthly Budget -->
+        <div class="lg:col-span-6 sanchoy-card p-5 space-y-4">
+          <div class="pb-3 border-b border-[var(--border-subtle)]">
+            <span class="sanchoy-section-tag">Spending Ceiling</span>
+            <h3 class="sanchoy-section-title text-base">Monthly Budget</h3>
+          </div>
+
+          <div id="budgetSuggestionBox" class="hidden p-3 sanchoy-surface-raised border border-[var(--border)] rounded-xl space-y-2">
+            <p class="text-[10px] font-semibold text-[var(--accent)] uppercase tracking-wide">Suggested Budget</p>
+            <div id="suggestedBudgetText" class="font-bold font-mono text-[var(--text-primary)] text-sm"></div>
+            <div class="flex gap-2">
+              <button id="applySuggestedBudget" class="sanchoy-btn sanchoy-btn-primary text-xs py-1 px-3">Apply</button>
+              <button id="dismissSuggestedBudget" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1 px-3">Dismiss</button>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <input id="budgetInput" type="number" placeholder="Set budget ₹" class="flex-1 sanchoy-input p-2 text-xs font-mono"/>
+            <button id="saveBudget" class="sanchoy-btn sanchoy-btn-primary text-xs py-2 px-4">Save</button>
+          </div>
+
+          <div class="space-y-1.5 pt-1">
+            <div class="w-full h-2 rounded-full overflow-hidden sanchoy-surface-inset">
+              <div id="budgetBar" class="h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="budgetText" class="text-[11px] text-[var(--text-muted)]">No budget set</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ============================================== -->
+      <!-- 9. MONTHLY SUMMARY REPORT                      -->
+      <!-- ============================================== -->
+      <div class="sanchoy-card p-5 sm:p-6 space-y-4">
+        <div class="flex justify-between items-center pb-3 border-b border-[var(--border-subtle)]">
+          <div>
+            <span class="sanchoy-section-tag">Reconciliation</span>
+            <h2 class="sanchoy-section-title text-base sm:text-lg">Monthly Summary Report</h2>
+          </div>
+          <button id="copySummary" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-3">Copy Report</button>
+        </div>
+        <pre id="monthlySummary" class="text-xs text-[var(--text-secondary)] sanchoy-surface-inset p-4 rounded-xl max-h-[180px] overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed border border-[var(--border-subtle)]"></pre>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- 10. RECENT TRANSACTIONS (LEDGER)               -->
+      <!-- ============================================== -->
+      <div id="recentTxCard" class="sanchoy-card p-5 sm:p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-[var(--border-subtle)]">
+          <div>
+            <span class="sanchoy-section-tag">Authoritative Ledger</span>
+            <h2 class="sanchoy-section-title text-base sm:text-lg">Recent Transactions</h2>
+            <p class="text-xs text-[var(--text-muted)] mt-0.5">Dual-ledger transaction history with real-time balance reconciliation</p>
+          </div>
+          <!-- Filter Tabs -->
+          <div class="flex items-center gap-1 p-1 sanchoy-surface-inset rounded-xl overflow-x-auto" id="recentTxFilters">
+            <button data-filter="all" class="filter-tab active px-2.5 py-1 rounded-lg text-xs font-bold text-[var(--text-primary)] transition-all">All</button>
+            <button data-filter="expense" class="filter-tab px-2.5 py-1 rounded-lg text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">Expenses (−)</button>
+            <button data-filter="income" class="filter-tab px-2.5 py-1 rounded-lg text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">Income (+)</button>
+            <button data-filter="allocations" class="filter-tab px-2.5 py-1 rounded-lg text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">With Allocations</button>
+          </div>
+        </div>
+        <div id="recentTx" class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+          <div class="text-xs text-[var(--text-muted)] py-4">No transactions found. Click + to add your first transaction.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Hidden legacy FAB trigger maintained for backward compatibility -->
+    <div class="hidden">
+      <button id="mobileFabNewTx" aria-label="Log New Transaction">+</button>
+    </div>
+  </section>
+
+  <!-- ===== ANALYTICS PAGE (FINANCIAL INTELLIGENCE) ===== -->
+  <section id="page-analytics" class="page max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pb-24 md:pb-12 space-y-8">
+    
+    <!-- HEADER & ANALYTICAL WINDOW SELECTOR -->
+    <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 pb-4 border-b border-[var(--border-subtle)]">
+      <div>
+        <div class="flex items-center gap-2 text-xs font-mono">
+          <span class="font-bold tracking-widest uppercase text-[var(--accent)]">FINANCIAL INTELLIGENCE</span>
+          <span aria-hidden="true" class="text-[var(--text-muted)]">·</span>
+          <span class="text-[var(--text-muted)]">Deterministic Analytics</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)] font-serif-editorial tracking-tight mt-0.5">Financial Intelligence</h1>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">Behavioral dimensions, cash flow dynamics, and sovereign wealth trajectory</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 self-start md:self-auto">
+        <!-- Range Segments -->
+        <div class="inline-flex p-1 rounded-xl bg-[var(--surface-inset)] border border-[var(--border-subtle)] text-xs font-mono">
+          <button data-analytics-window="last_7_days" class="px-2.5 py-1 rounded-lg transition-all text-[var(--text-muted)] hover:text-[var(--text-primary)]">7D</button>
+          <button data-analytics-window="last_30_days" class="px-2.5 py-1 rounded-lg transition-all bg-[var(--surface)] text-[var(--text-primary)] shadow-xs border border-[var(--border)]">30D</button>
+          <button data-analytics-window="last_90_days" class="px-2.5 py-1 rounded-lg transition-all text-[var(--text-muted)] hover:text-[var(--text-primary)]">90D</button>
+          <button data-analytics-window="last_180_days" class="px-2.5 py-1 rounded-lg transition-all text-[var(--text-muted)] hover:text-[var(--text-primary)]">6M</button>
+          <button data-analytics-window="last_365_days" class="px-2.5 py-1 rounded-lg transition-all text-[var(--text-muted)] hover:text-[var(--text-primary)]">1Y</button>
+        </div>
+
+        <button id="backToTracker" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-3">
+          ← Command Center
+        </button>
+      </div>
+    </div>
+
+    <!-- 1. FINANCIAL DNA -->
+    <div class="sanchoy-card p-5 sm:p-6 space-y-5" id="section-financial-dna">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-3 border-b border-[var(--border-subtle)]">
+        <div>
+          <span class="text-[11px] font-bold tracking-widest uppercase text-[var(--accent)] font-mono">DIMENSIONAL ARCHITECTURE</span>
+          <h2 class="text-xl sm:text-2xl font-bold font-serif-editorial text-[var(--text-primary)] mt-0.5">Financial DNA</h2>
+          <p class="text-xs text-[var(--text-muted)] mt-0.5">Descriptive behavioral architecture across seven deterministic dimensions</p>
+        </div>
+        <div class="flex items-center gap-2 text-[10px] font-mono text-[var(--text-muted)]">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]"></span>
+          <span>OBJECTIVE DERIVATION</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <!-- DNA Radar Canvas Container -->
+        <div class="lg:col-span-5 flex flex-col items-center justify-center p-2 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border-subtle)]">
+          <div class="w-full h-[320px] sm:h-[350px] relative">
+            <canvas id="chartFinancialDNA"></canvas>
+            <div id="financialDNAEmptyState" class="hidden absolute inset-0 flex items-center justify-center"></div>
+          </div>
+        </div>
+
+        <!-- DNA Seven Dimensions Interpretation List -->
+        <div class="lg:col-span-7 space-y-2.5" id="financialDNAList"></div>
+      </div>
+    </div>
+
+    <!-- 2. CASH FLOW DYNAMICS -->
+    <div class="sanchoy-card p-5 sm:p-6 space-y-5" id="section-cash-flow">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-[var(--border-subtle)]">
+        <div>
+          <span class="text-[11px] font-bold tracking-widest uppercase text-[var(--income)] font-mono">INFLOW & EXPENDITURE</span>
+          <h2 class="text-xl sm:text-2xl font-bold font-serif-editorial text-[var(--text-primary)] mt-0.5">Cash Flow Dynamics</h2>
+          <p class="text-xs text-[var(--text-muted)] mt-0.5">Real income and daily virtual allocations versus real expenses (internal transfers excluded)</p>
+        </div>
+
+        <!-- Summary Stats Pills -->
+        <div class="flex items-center gap-3 self-start sm:self-auto text-xs font-mono">
+          <div class="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]">
+            <div class="text-[10px] text-[var(--text-muted)] uppercase">Inflows</div>
+            <div id="cashFlowTotalInflow" class="text-sm font-bold text-[var(--income)]">₹0.00</div>
+          </div>
+          <div class="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]">
+            <div class="text-[10px] text-[var(--text-muted)] uppercase">Expenses</div>
+            <div id="cashFlowTotalExpense" class="text-sm font-bold text-[var(--expense)]">₹0.00</div>
+          </div>
+          <div class="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]">
+            <div class="text-[10px] text-[var(--text-muted)] uppercase">Net Position</div>
+            <div id="cashFlowNetPosition" class="text-sm font-bold text-[var(--text-primary)]">₹0.00</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-[320px] sm:h-[360px] relative">
+        <canvas id="chartCashFlow"></canvas>
+        <div id="cashFlowEmptyState" class="hidden absolute inset-0 flex items-center justify-center"></div>
+      </div>
+    </div>
+
+    <!-- 3. SPENDING BEHAVIOR -->
+    <div class="space-y-4" id="section-spending-behavior">
+      <div class="pb-2 border-b border-[var(--border-subtle)]">
+        <span class="text-[11px] font-bold tracking-widest uppercase text-[var(--expense)] font-mono">CONSUMPTION ARCHITECTURE</span>
+        <h2 class="text-xl sm:text-2xl font-bold font-serif-editorial text-[var(--text-primary)] mt-0.5">Spending Behavior</h2>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">Category allocations, spending velocity, and periodic volatility</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+        <!-- A. Category Spending -->
+        <div class="sanchoy-card p-5 space-y-4 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center">
+              <h3 class="font-bold text-[var(--text-primary)] text-sm">Category Concentration</h3>
+              <span id="categorySpendTotal" class="text-xs font-mono font-bold text-[var(--text-primary)]">₹0.00</span>
+            </div>
+            <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Distribution across observed real expense categories</p>
+          </div>
+          <div class="h-[260px] sm:h-[280px] relative">
+            <canvas id="chartCategorySpend"></canvas>
+          </div>
+        </div>
+
+        <!-- B. Spending Velocity -->
+        <div class="sanchoy-card p-5 space-y-4 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center">
+              <h3 class="font-bold text-[var(--text-primary)] text-sm">Spending Velocity</h3>
+              <span class="text-[10px] font-mono text-[var(--text-muted)] uppercase">Cumulative Pace</span>
+            </div>
+            <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Actual consumption accumulation vs linear benchmark pace</p>
+          </div>
+          <div class="h-[260px] sm:h-[280px] relative">
+            <canvas id="chartSpendingVelocity"></canvas>
+          </div>
+        </div>
+
+        <!-- C. Spending Volatility -->
+        <div class="sanchoy-card p-5 space-y-4 flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-center">
+              <h3 class="font-bold text-[var(--text-primary)] text-sm">Spending Volatility</h3>
+              <span id="volatilityScoreBadge" class="text-[10px] font-mono"></span>
+            </div>
+            <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Daily expense variation relative to period average daily spend</p>
+          </div>
+          <div class="h-[260px] sm:h-[280px] relative">
+            <canvas id="chartSpendingVolatility"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. WALLET INTELLIGENCE -->
+    <div class="sanchoy-card p-5 sm:p-6 space-y-5" id="section-wallet-intelligence">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-3 border-b border-[var(--border-subtle)]">
+        <div>
+          <span class="text-[11px] font-bold tracking-widest uppercase text-[var(--accent-secondary)] font-mono">LIQUID CAPITAL</span>
+          <h2 class="text-xl sm:text-2xl font-bold font-serif-editorial text-[var(--text-primary)] mt-0.5">Wallet Intelligence</h2>
+          <p class="text-xs text-[var(--text-muted)] mt-0.5">Online versus Cash wallet distribution, utilization, and balance trajectory (Vault strictly excluded)</p>
+        </div>
+        <div class="text-[10px] font-mono text-[var(--text-muted)]">
+          <span>EXCLUDES PROTECTED VAULT</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <!-- Left: Distribution & Utilization -->
+        <div class="lg:col-span-4 space-y-4">
+          <div class="h-[200px] relative">
+            <canvas id="chartWalletDistribution"></canvas>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+            <div class="p-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]">
+              <div class="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-[var(--accent)]"></span>
+                <span>Online Wallet</span>
+              </div>
+              <div id="walletOnlineBalanceValue" class="font-bold text-[var(--text-primary)] mt-1">₹0.00</div>
+              <div id="walletOnlinePctValue" class="text-[10px] text-[var(--text-muted)]">50%</div>
+            </div>
+            <div class="p-2.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]">
+              <div class="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-[var(--accent-secondary)]"></span>
+                <span>Cash Wallet</span>
+              </div>
+              <div id="walletCashBalanceValue" class="font-bold text-[var(--text-primary)] mt-1">₹0.00</div>
+              <div id="walletCashPctValue" class="text-[10px] text-[var(--text-muted)]">50%</div>
+            </div>
+          </div>
+
+          <!-- Utilization Summary -->
+          <div class="p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] space-y-1.5">
+            <div class="flex justify-between items-center text-[11px] text-[var(--text-muted)] font-mono">
+              <span>Online Spend: <b id="walletUtilOnlineSpend" class="text-[var(--text-primary)]">₹0.00</b></span>
+              <span>Cash Spend: <b id="walletUtilCashSpend" class="text-[var(--text-primary)]">₹0.00</b></span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-[var(--surface-inset)] overflow-hidden">
+              <div id="walletUtilBar" class="h-full bg-[var(--accent)] rounded-full transition-all" style="width: 50%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Dual Line Wallet Trends -->
+        <div class="lg:col-span-8 p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)]">
+          <div class="h-[280px] sm:h-[300px] relative">
+            <canvas id="chartWalletTrends"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. SAVINGS & WEALTH -->
+    <div class="sanchoy-card p-5 sm:p-6 space-y-5" id="section-savings-wealth">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-[var(--border-subtle)]">
+        <div>
+          <span class="text-[11px] font-bold tracking-widest uppercase text-[var(--accent)] font-mono">SOVEREIGN CAPITAL</span>
+          <h2 class="text-xl sm:text-2xl font-bold font-serif-editorial text-[var(--text-primary)] mt-0.5">Savings & Wealth Trajectory</h2>
+          <p class="text-xs text-[var(--text-muted)] mt-0.5">Total Sanchoy Holdings uniting liquid virtual wallets with sovereign protected reserve</p>
+        </div>
+
+        <!-- Wealth Breakdown Metric Cards -->
+        <div class="grid grid-cols-3 gap-2 text-xs font-mono self-start sm:self-auto">
+          <div class="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] text-right sm:text-left">
+            <div class="text-[10px] text-[var(--text-muted)] uppercase">Liquid Wallets</div>
+            <div id="analyticsLiquidBalance" class="text-xs sm:text-sm font-bold text-[var(--accent)]">₹0.00</div>
+          </div>
+          <div class="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] text-right sm:text-left">
+            <div class="text-[10px] text-[var(--text-muted)] uppercase">Protected Reserve</div>
+            <div id="analyticsVaultBalance" class="text-xs sm:text-sm font-bold text-[var(--accent-secondary)]">₹0.00</div>
+          </div>
+          <div class="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] text-right sm:text-left">
+            <div class="text-[10px] text-[var(--income)] uppercase font-bold">Total Holdings</div>
+            <div id="analyticsTotalHoldings" class="text-xs sm:text-sm font-bold text-[var(--income)]">₹0.00</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="h-[320px] sm:h-[360px] relative">
+        <canvas id="chartNetHoldings"></canvas>
+      </div>
+    </div>
+
+    <!-- 6. HISTORICAL PATTERNS & SPENDING DENSITY MAP -->
+    <div class="sanchoy-card p-5 sm:p-6 space-y-6" id="section-historical-patterns">
+      <div class="pb-3 border-b border-[var(--border-subtle)]">
+        <span class="text-[11px] font-bold tracking-widest uppercase text-[var(--text-secondary)] font-mono">TEMPORAL RHYTHM</span>
+        <h2 class="text-xl sm:text-2xl font-bold font-serif-editorial text-[var(--text-primary)] mt-0.5">Historical Patterns & Cadence</h2>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">Monthly financial fingerprint and calendar spending density</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Monthly Financial Fingerprint Bar Chart -->
+        <div class="lg:col-span-5 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] space-y-3">
+          <div class="flex justify-between items-center">
+            <h3 class="font-bold text-[var(--text-primary)] text-sm">Monthly Fingerprint</h3>
+            <span class="text-[10px] font-mono text-[var(--text-muted)]">INFLOW VS OUTFLOW</span>
+          </div>
+          <div class="h-[260px] sm:h-[300px] relative">
+            <canvas id="chartHistoricalFingerprint"></canvas>
+          </div>
+        </div>
+
+        <!-- Monthly Spending Density Map (Heatmap) -->
+        <div class="lg:col-span-7 p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] space-y-3">
+          <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-2 border-b border-[var(--border-subtle)]">
+            <div>
+              <h3 class="font-bold text-[var(--text-primary)] text-sm font-serif-editorial">Monthly Spending Density Map</h3>
+              <p class="text-[10px] text-[var(--text-muted)]">Click any calendar cell to view itemized records and totals</p>
+            </div>
+            <button id="exportCSVtx" class="sanchoy-btn sanchoy-btn-secondary text-[11px] py-1 px-3 self-start sm:self-auto">Export CSV</button>
+          </div>
+          <div id="expenseHeatmap" class="grid grid-cols-7 gap-2 pt-1"></div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ===== DEDICATED AUTH / INITIALIZATION / LOGIN PAGE (SCREEN 2) ===== -->
+  <section id="page-auth" class="page p-0 m-0 w-full min-h-screen">
+    <div id="authScreenContainer" class="w-full min-h-screen"></div>
+  </section>
+
+  <!-- ===== DEDICATED SYNC CENTER PAGE ===== -->
+  <section id="page-sync" class="page max-w-7xl mx-auto px-4 sm:px-6 py-8 pb-24 md:pb-12"></section>
+
+  <!-- ===== HIDDEN SAVINGS VAULT PAGE ===== -->
+  <section id="page-vault" class="page max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-8 pb-24 md:pb-12 transition-colors duration-300">
+    <div id="vault-theme-wrapper" class="space-y-6">
+      
+      <!-- 1. VAULT IDENTITY & HEADER -->
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-4 border-b border-[var(--border-subtle)]">
+        <div>
+          <div class="flex items-center gap-2 text-xs text-[var(--accent-secondary)] font-mono">
+            <span class="font-bold tracking-widest uppercase">PROTECTED SAVINGS</span>
+            <span aria-hidden="true" class="text-[var(--text-muted)]">·</span>
+            <span class="text-[var(--text-muted)]">Private financial reserve</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold font-serif-editorial tracking-tight text-[var(--text-primary)] mt-1">Protected Savings</h1>
+          <p class="text-xs text-[var(--text-muted)] mt-0.5" id="vault-subtitle">Independent sovereign savings ledger · Excluded from liquid daily allocation</p>
+        </div>
+        
+        <div class="flex items-center gap-2 self-start sm:self-auto">
+          <!-- Close and Lock Button -->
+          <button id="lockVaultBtn" class="sanchoy-btn sanchoy-btn-danger text-xs py-2 px-3" title="Lock Vault & Return to Command Center">
+            <span class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.25"/><path d="M7.5 10.5V6.75a4.5 4.5 0 1 1 9 0v3.75"/></svg>
+              <span>Lock Vault</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. CURRENT PROTECTED BALANCE (HERO) -->
+      <div class="sanchoy-card p-6 sm:p-8 relative overflow-hidden" id="card-lifetime">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--border-subtle)]">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-[var(--accent-secondary)] font-mono">Current Protected Reserve</span>
+            <p class="text-xs text-[var(--text-muted)] mt-0.5">Autonomous sovereign reserve · Excluded from daily allowance drift</p>
+          </div>
+          <div class="flex items-center gap-2 text-[10px] font-mono text-[var(--text-muted)] self-start sm:self-auto">
+            <span class="w-2 h-2 rounded-full bg-[var(--income)]"></span>
+            <span>ENCRYPTED & SOVEREIGN</span>
+          </div>
+        </div>
+        
+        <div class="pt-4 sm:pt-6">
+          <div id="vault-total-savings" class="text-3xl sm:text-5xl lg:text-6xl font-extrabold font-serif-editorial tracking-tight text-[var(--text-primary)] select-all">
+            ₹0.00
+          </div>
+          <p class="text-xs text-[var(--text-muted)] mt-2 flex items-center gap-1.5 font-mono">
+            <span>Preserved across ledger resets · Client-side AES-GCM encrypted</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- 3. PRIMARY VAULT ACTIONS (THREE FIRST-CLASS OPERATIONS) -->
+      <div>
+        <div class="pb-2 mb-3 border-b border-[var(--border-subtle)] flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] font-mono">Primary Vault Operations</span>
+          <span class="text-[10px] text-[var(--text-muted)] font-mono">First-Class Mutations</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4" id="vault-primary-actions-bar">
+          <!-- Operation 1: Add to Vault -->
+          <button id="primaryDepositVaultBtn" class="sanchoy-card p-4 sm:p-5 text-left rounded-xl border border-[var(--border)] hover:border-[var(--accent)] hover:shadow-md transition-all duration-200 group cursor-pointer flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="w-8 h-8 rounded-lg bg-[var(--income-bg)] text-[var(--income)] flex items-center justify-center shrink-0">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4.5v15M4.5 12h15"/></svg>
+                </div>
+                <span class="text-[10px] font-bold text-[var(--income)] font-mono uppercase tracking-wider">Deposit</span>
+              </div>
+              <h3 class="font-bold text-sm text-[var(--text-primary)] mt-3 group-hover:text-[var(--income)] transition-colors">Add to Vault</h3>
+              <p class="text-[11px] text-[var(--text-muted)] mt-1 leading-snug">Online / Cash → Vault. Allocate liquid funds into protected reserve.</p>
+            </div>
+            <div class="mt-4 pt-2.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)]">
+              <span>Transfer In</span>
+              <span class="text-[var(--income)] font-bold">→</span>
+            </div>
+          </button>
+
+          <!-- Operation 2: Withdraw -->
+          <button id="primaryWithdrawVaultBtn" class="sanchoy-card p-4 sm:p-5 text-left rounded-xl border border-[var(--border)] hover:border-[var(--accent)] hover:shadow-md transition-all duration-200 group cursor-pointer flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="w-8 h-8 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] flex items-center justify-center shrink-0">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 9.75L3.75 6l3.75-3.75M3.75 6H15a6 6 0 0 1 6 6v1.5M16.5 14.25L20.25 18l-3.75 3.75M20.25 18H9a6 6 0 0 1-6-6v-1.5"/></svg>
+                </div>
+                <span class="text-[10px] font-bold text-[var(--accent)] font-mono uppercase tracking-wider">Withdraw</span>
+              </div>
+              <h3 class="font-bold text-sm text-[var(--text-primary)] mt-3 group-hover:text-[var(--accent)] transition-colors">Withdraw to Wallet</h3>
+              <p class="text-[11px] text-[var(--text-muted)] mt-1 leading-snug">Vault → Online / Cash. Return protected capital into active liquid wallet.</p>
+            </div>
+            <div class="mt-4 pt-2.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)]">
+              <span>Transfer Out</span>
+              <span class="text-[var(--accent)] font-bold">→</span>
+            </div>
+          </button>
+
+          <!-- Operation 3: Spend from Vault -->
+          <button id="primarySpendVaultBtn" class="sanchoy-card p-4 sm:p-5 text-left rounded-xl border border-[var(--border)] hover:border-[var(--expense)] hover:shadow-md transition-all duration-200 group cursor-pointer flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                <div class="w-8 h-8 rounded-lg bg-[var(--expense-bg)] text-[var(--expense)] flex items-center justify-center shrink-0">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.25 12.75l-7.5 7.5a2.25 2.25 0 0 1-3.18 0l-5.82-5.82a2.25 2.25 0 0 1-.66-1.59V4.5h8.34c.6 0 1.17.24 1.59.66l7.07 7.07a2.25 2.25 0 0 1 0 3.18z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
+                </div>
+                <span class="text-[10px] font-bold text-[var(--expense)] font-mono uppercase tracking-wider">Direct Spend</span>
+              </div>
+              <h3 class="font-bold text-sm text-[var(--text-primary)] mt-3 group-hover:text-[var(--expense)] transition-colors">Spend from Vault</h3>
+              <p class="text-[11px] text-[var(--text-muted)] mt-1 leading-snug">Vault → External Spending. Spends directly from protected reserve without affecting virtual liquid wallets.</p>
+            </div>
+            <div class="mt-4 pt-2.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)]">
+              <span>Reserve Spend</span>
+              <span class="text-[var(--expense)] font-bold">→</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 4. SAVINGS OVERVIEW & NET WORTH CONTEXT -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Total Sanchoy Holdings Card -->
+        <div class="p-5 sm:p-6 rounded-xl border border-[var(--border)] sanchoy-card flex flex-col justify-between" id="card-growth">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] font-mono">Total Sanchoy Holdings</span>
+                <p class="text-[11px] text-[var(--text-muted)] mt-0.5">Comprehensive net worth position</p>
+              </div>
+              <span class="text-[10px] font-mono text-[var(--text-muted)]">NET WORTH</span>
+            </div>
+            <div class="sanchoy-balance-total text-[var(--text-primary)] mt-3 select-all" id="vault-total-holdings">₹0.00</div>
+          </div>
+          <p class="text-[10px] text-[var(--text-muted)] mt-3 pt-2.5 border-t border-[var(--border-subtle)] font-mono">
+            Liquid Wallets (Online + Cash) + Protected Savings
+          </p>
+        </div>
+
+        <!-- Cumulative Vault Flow Summary -->
+        <div class="p-5 sm:p-6 rounded-xl border border-[var(--border)] sanchoy-card flex flex-col justify-between" id="card-allocation">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] font-mono">Cumulative Reserve Flow</span>
+                <p class="text-[11px] text-[var(--text-muted)] mt-0.5">All-time lifetime ledger flow</p>
+              </div>
+              <span id="vault-active-categories" class="text-[10px] font-mono text-[var(--text-muted)]">0 Records</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mt-3 pt-1 border-t border-[var(--border-subtle)]">
+              <div>
+                <span class="text-[9px] font-bold text-[var(--text-muted)] block uppercase font-mono">Deposited</span>
+                <span id="vault-flow-deposits" class="text-xs sm:text-sm font-extrabold font-mono text-[var(--income)]">+₹0.00</span>
+              </div>
+              <div>
+                <span class="text-[9px] font-bold text-[var(--text-muted)] block uppercase font-mono">Withdrawn</span>
+                <span id="vault-flow-withdrawals" class="text-xs sm:text-sm font-extrabold font-mono text-[var(--accent)]">−₹0.00</span>
+              </div>
+              <div>
+                <span class="text-[9px] font-bold text-[var(--text-muted)] block uppercase font-mono">Spent</span>
+                <span id="vault-flow-spends" class="text-xs sm:text-sm font-extrabold font-mono text-[var(--danger)]">−₹0.00</span>
+              </div>
+            </div>
+          </div>
+          <p class="text-[10px] text-[var(--text-muted)] mt-3 pt-2.5 border-t border-[var(--border-subtle)] font-mono" id="vault-allocation-desc">
+            All-time protected deposits, wallet transfers & direct spends
+          </p>
+        </div>
+      </div>
+
+      <!-- 5. CHRONOLOGICAL LEDGER & ACTIVITY HISTORY -->
+      <div class="space-y-4">
+        <!-- Operations Filter Bar & Utilities -->
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 p-3.5 rounded-xl border border-[var(--border-subtle)] sanchoy-card" id="operations-bar">
+          <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+            <!-- Type Filter Tabs -->
+            <div class="flex items-center gap-1 p-1 sanchoy-surface-inset rounded-lg">
+              <button id="vaultFilterAll" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all bg-[var(--accent)] text-white">All</button>
+              <button id="vaultFilterDeposits" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all text-[var(--text-muted)] hover:text-[var(--text-primary)]">Deposits</button>
+              <button id="vaultFilterWithdrawals" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all text-[var(--text-muted)] hover:text-[var(--text-primary)]">Withdrawals</button>
+              <button id="vaultFilterSpends" class="px-2.5 py-1 text-xs font-bold rounded-md transition-all text-[var(--text-muted)] hover:text-[var(--text-primary)]">Spends</button>
+            </div>
+            <!-- Search input -->
+            <div class="relative flex-1 sm:flex-initial">
+              <input id="vaultSearch" type="text" placeholder="Search ledger..." class="w-full sm:w-48 px-3 py-1.5 text-xs font-medium rounded-lg sanchoy-input" />
+            </div>
+            <!-- Sort select -->
+            <select id="vaultSort" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg sanchoy-select">
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="high-savings">Highest Amount First</option>
+              <option value="low-savings">Lowest Amount First</option>
+            </select>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5 w-full lg:w-auto justify-end">
+            <button id="vaultBackupBtn" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1.5" title="Export Vault Encrypted JSON Backup">
+              <svg class="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.75 15.75v3a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-3M12 3.75v11.25M7.5 10.5l4.5 4.5 4.5-4.5"/></svg>
+              <span>Backup</span>
+            </button>
+            <button id="vaultRestoreBtn" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1.5" title="Restore Encrypted Vault JSON">
+              <svg class="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.75 15.75v3a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-3M12 15V3.75M7.5 8.25L12 3.75l4.5 4.5"/></svg>
+              <span>Restore</span>
+            </button>
+            <button id="vaultCsvBtn" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1.5" title="Export Vault Ledger as CSV">
+              <svg class="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.25 3.75H5.25a1.5 1.5 0 0 0-1.5 1.5v13.5a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5V9.75L14.25 3.75zM14.25 3.75v6h6M8.25 13.5h7.5M8.25 16.5h4.5"/></svg>
+              <span>CSV</span>
+            </button>
+            <button id="addVaultRecordBtn" class="sanchoy-btn sanchoy-btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1.5" title="Add Legacy Monthly Snapshot Node">
+              <svg class="w-3.5 h-3.5 text-[var(--accent-secondary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.75" y="5.25" width="16.5" height="15" rx="2.25"/><path d="M3.75 9.75h16.5M8.25 3v3M15.75 3v3M12 12v5M9.5 14.5h5"/></svg>
+              <span>Monthly Node</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 5 & 6: Main Interactive Content Grid (Activity on Left, Secondary Intelligence on Right) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- Vault Activity & Chronological Ledger (Left) -->
+          <div class="lg:col-span-7 space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
+              <div>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--accent-secondary)] font-mono block">Chronological Ledger</span>
+                <h2 class="text-sm sm:text-base font-bold font-serif-editorial text-[var(--text-primary)]">Protected Savings Activity</h2>
+              </div>
+              <span class="text-[10px] font-mono text-[var(--text-muted)]" id="vault-count-badge">0 Records</span>
+            </div>
+
+            <!-- Activity items container -->
+            <div class="space-y-2.5" id="vault-timeline-list">
+              <!-- Rendered by vault.js -->
+            </div>
+          </div>
+
+          <!-- Secondary Intelligence Area (Right) -->
+          <div class="lg:col-span-5 space-y-4">
+            <!-- Category / Allocation Breakdown -->
+            <div class="p-5 rounded-xl border border-[var(--border)] sanchoy-card space-y-3" id="chart-breakdown-card">
+              <div class="pb-2 border-b border-[var(--border-subtle)] flex items-center justify-between">
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] font-mono block">Capital Distribution</span>
+                  <h3 class="font-bold text-xs sm:text-sm font-serif-editorial text-[var(--text-primary)]">Allocation Breakdown</h3>
+                </div>
+              </div>
+              <div class="h-[220px] relative">
+                <canvas id="vaultDoughnutChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Cumulative Growth Roadmap Card -->
+            <div class="p-5 rounded-xl border border-[var(--border)] sanchoy-card space-y-3" id="chart-roadmap-card">
+              <div class="pb-2 border-b border-[var(--border-subtle)] flex items-center justify-between">
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] font-mono block">Trajectory</span>
+                  <h3 class="font-bold text-xs sm:text-sm font-serif-editorial text-[var(--text-primary)]">Cumulative Reserve Trajectory</h3>
+                </div>
+              </div>
+              <div class="h-[180px] relative">
+                <canvas id="vaultLineChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Reserve Intelligence Insight Card -->
+            <div class="p-4 rounded-xl border border-[var(--border-subtle)] sanchoy-surface-inset space-y-2">
+              <div class="flex items-center gap-2 text-[var(--accent)]">
+                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.25l8.25 3.75v6c0 5.25-3.5 10.125-8.25 11.25-4.75-1.125-8.25-6-8.25-11.25v-6L12 2.25z"/><circle cx="12" cy="11.25" r="2.25"/><path d="M12 13.5v3"/></svg>
+                <h4 class="font-bold text-xs text-[var(--text-primary)] font-serif-editorial">Protected Reserve Intelligence</h4>
+              </div>
+              <p class="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                Vault capital is held independently from daily virtual allowances. Direct expenditures logged from the Vault do not reduce Cash or Online wallet allowances.
+              </p>
+            </div>
+            
+            <div id="vault-future-intelligence-anchor"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Invisible file input for restore operations -->
+  <input id="vaultFileInput" type="file" accept="application/json" class="hidden"/>
+
+  <!-- ===== VAULT RECORD ADD/EDIT MODAL ===== -->
+  <div id="vaultRecordModal" class="modal-backdrop fixed inset-0 bg-slate-950/60 backdrop-blur-md hidden items-center justify-center p-4 z-50 transition-opacity duration-300" role="dialog" aria-hidden="true">
+    <div class="modal w-full max-w-2xl sanchoy-card rounded-3xl p-6 sm:p-8 transform transition-all duration-300 scale-95 overflow-hidden shadow-2xl" role="document">
+      <div class="flex justify-between items-center border-b border-[var(--border-subtle)] pb-4 mb-6">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.25l8.25 3.75v6c0 5.25-3.5 10.125-8.25 11.25-4.75-1.125-8.25-6-8.25-11.25v-6L12 2.25z"/><circle cx="12" cy="11.25" r="2.25"/><path d="M12 13.5v3"/></svg>
+          <h3 class="text-base font-extrabold text-[var(--text-primary)] font-serif-editorial uppercase tracking-wider" id="vaultModalTitle">Add Savings Node</h3>
+        </div>
+        <button id="closeVaultRecordModal" class="sanchoy-btn-icon text-[var(--text-muted)] hover:text-[var(--text-primary)]" aria-label="Close modal">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <input type="hidden" id="edit-record-id" />
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-1">
+        <!-- Date / Month Input -->
+        <div class="sm:col-span-2">
+          <label class="block text-[10px] font-bold text-[var(--text-secondary)] uppercase mb-1.5">Month of Savings</label>
+          <input id="vaultMonthInput" type="month" class="w-full p-2.5 rounded-xl text-xs font-bold sanchoy-surface-inset border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" />
+        </div>
+
+        <!-- Monthly Cash Savings -->
+        <div>
+          <label class="block text-[10px] font-bold text-[var(--text-secondary)] uppercase mb-1.5">Monthly Cash Savings (₹)</label>
+          <input id="vaultCashInput" type="number" step="any" min="0" placeholder="0.00" class="w-full p-2.5 rounded-xl text-xs font-bold sanchoy-surface-inset border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" />
+        </div>
+
+        <!-- Monthly Online Savings -->
+        <div>
+          <label class="block text-[10px] font-bold text-[var(--text-secondary)] uppercase mb-1.5">Monthly Online Savings (₹)</label>
+          <input id="vaultOnlineInput" type="number" step="any" min="0" placeholder="0.00" class="w-full p-2.5 rounded-xl text-xs font-bold sanchoy-surface-inset border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" />
+        </div>
+
+        <!-- Extra Savings -->
+        <div>
+          <label class="block text-[10px] font-bold text-[var(--text-secondary)] uppercase mb-1.5">Extra Savings (₹)</label>
+          <input id="vaultExtraInput" type="number" step="any" min="0" placeholder="0.00" class="w-full p-2.5 rounded-xl text-xs font-bold sanchoy-surface-inset border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" />
+        </div>
+
+        <!-- Emergency Fund -->
+        <div>
+          <label class="block text-[10px] font-bold text-[var(--text-secondary)] uppercase mb-1.5">Emergency Fund (₹)</label>
+          <input id="vaultEmergencyInput" type="number" step="any" min="0" placeholder="0.00" class="w-full p-2.5 rounded-xl text-xs font-bold sanchoy-surface-inset border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" />
+        </div>
+
+        <!-- Investments -->
+        <div>
+          <label class="block text-[10px] font-bold text-[var(--text-secondary)] uppercase mb-1.5">Investments (₹)</label>
+          <input id="vaultInvestmentsInput" type="number" step="any" min="0" placeholder="0.00" class="w-full p-2.5 rounded-xl text-xs font-bold sanchoy-surface-inset border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" />
+        </div>
+
+        <!-- Gold Savings -->
+        <div>
+          <label class="block text-[10px] font-bold text-[var(--text-secondary)] uppercase mb-1.5">Gold Savings (₹)</label>
+          <input id="vaultGoldInput" type="number" step="any" min="0" placeholder="0.00" class="w-full p-2.5 rounded-xl text-xs font-bold sanchoy-surface-inset border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" />
+        </div>
+
+        <!-- Other Savings -->
+        <div class="sm:col-span-2">
+          <label class="block text-[10px] font-bold text-[var(--text-secondary)] uppercase mb-1.5">Other Savings (₹)</label>
+          <input id="vaultOtherInput" type="number" step="any" min="0" placeholder="0.00" class="w-full p-2.5 rounded-xl text-xs font-bold sanchoy-surface-inset border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" />
+        </div>
+
+        <!-- Monthly Notes -->
+        <div class="sm:col-span-2">
+          <label class="block text-[10px] font-bold text-[var(--text-secondary)] uppercase mb-1.5">Monthly Notes</label>
+          <textarea id="vaultNotesInput" placeholder="Add specific milestones, targets, or sources..." rows="3" class="w-full p-2.5 rounded-xl text-xs font-bold sanchoy-surface-inset border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"></textarea>
+        </div>
+      </div>
+
+      <div class="flex gap-3 pt-6 border-t border-[var(--border-subtle)] mt-6">
+        <button id="saveVaultRecordBtn" class="flex-1 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all hover:-translate-y-0.5 cursor-pointer">
+          Save Node
+        </button>
+        <button id="cancelVaultRecordBtn" class="py-2.5 px-4 sanchoy-btn sanchoy-btn-secondary text-xs">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODALS AND POPUPS ===== -->
+  <div id="modalBackdrop" class="modal-backdrop fixed inset-0 bg-slate-950/60 backdrop-blur-md hidden items-center justify-center p-4 z-50 transition-opacity duration-300" role="dialog" aria-hidden="true">
+    <div class="modal w-full max-w-lg sanchoy-card p-6 transform transition-all duration-300 scale-95 overflow-hidden shadow-2xl" role="document">
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <input id="fileInput" type="file" accept=".csv,application/json" class="hidden"/>
+
+  <!-- SANCHOY GLOBAL MOBILE BOTTOM NAVIGATION BAR -->
+  <nav class="sanchoy-mobile-bar" aria-label="Mobile Navigation">
+    <button data-nav-target="home" class="sanchoy-mobile-nav-item active">
+      <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5v9.75a1.5 1.5 0 0 1-1.5 1.5H15v-6h-6v6H4.5A1.5 1.5 0 0 1 3 20.25V10.5z"/></svg>
+      <span>Home</span>
+    </button>
+    <button data-nav-target="charts" class="sanchoy-mobile-nav-item">
+      <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20.25h18M4.5 16.5l5.25-5.25 4.5 4.5 6-7.5M15.75 8.25h4.5v4.5"/></svg>
+      <span>Charts</span>
+    </button>
+    <!-- Central Prominent '+' Action -->
+    <button data-action="new-transaction" class="sanchoy-mobile-center-btn" title="New Transaction" aria-label="New Transaction">
+      +
+    </button>
+    <button data-nav-target="vault" class="sanchoy-mobile-nav-item">
+      <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.25l8.25 3.75v6c0 5.25-3.5 10.125-8.25 11.25-4.75-1.125-8.25-6-8.25-11.25v-6L12 2.25z"/><circle cx="12" cy="11.25" r="2.25"/><path d="M12 13.5v3"/></svg>
+      <span>Vault</span>
+    </button>
+    <button data-nav-target="settings" class="sanchoy-mobile-nav-item">
+      <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- SANCHOY GLOBAL TOAST NOTIFICATION CONTAINER -->
+  <div id="sanchoyToastContainer" class="sanchoy-toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- ===== SCRIPTS & APPLICATION ENTRYPOINT ===== -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('SW registered:', reg))
+          .catch(err => console.error('SW registration failed:', err));
+      });
+    }
+  </script>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
